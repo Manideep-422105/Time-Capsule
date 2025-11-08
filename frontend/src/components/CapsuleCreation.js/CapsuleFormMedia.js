@@ -3,9 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { setMedia } from "../../redux/slices/CapsuleSlice";
 
 // --- Google Drive API Configuration ---
-const GOOGLE_API_KEY = "AIzaSyB_zsxXZ0SAl7gIRXvHIx6YI4TcQ4Qyl-A";
-const GOOGLE_CLIENT_ID =
-  "224007734413-5ho2k8t00sh1gk6jnqstg3r35ov6afuf.apps.googleusercontent.com";
+const GOOGLE_API_KEY = process.env.REACT_APP_GOOGLE_API_KEY;
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
 
 const CapsuleFormMedia = ({ nextStep, prevStep }) => {
