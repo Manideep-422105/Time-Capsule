@@ -3,30 +3,41 @@
 import { deleteCapsule } from "@/app/actions/capsule";
 import { Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function DeleteButton({ capsuleId }: { capsuleId: string }) {
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this memory? This cannot be undone.")) return;
-    
+    // We can use a toast to confirm instead of window.confirm if we wanted,
+    // but window.confirm is safer.
+    if (!confirm("Are you sure?")) return;
+
     setLoading(true);
+    const toastId = toast.loading("Deleting memory...");
+
     const result = await deleteCapsule(capsuleId);
+
     if (result?.error) {
-        alert(result.error);
-        setLoading(false);
+      toast.error(result.error, { id: toastId });
+      setLoading(false);
+    } else {
+      toast.success("Memory deleted forever.", { id: toastId });
     }
-    // No need to set loading false on success, the page will refresh
   };
 
   return (
-    <button 
-        onClick={handleDelete}
-        disabled={loading}
-        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-full transition"
-        title="Delete Capsule"
+    <button
+      onClick={handleDelete}
+      disabled={loading}
+      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-full transition"
+      title="Delete Capsule"
     >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+      {loading ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <Trash2 className="w-4 h-4" />
+      )}
     </button>
   );
 }

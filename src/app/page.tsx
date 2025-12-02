@@ -1,13 +1,11 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Link from "next/link";
-import LogoutButton from "@/app/components/LogoutButton";
 import { dynamoClient } from "@/lib/dynamodb";
-import { Send, Inbox, Plus, Clock } from "lucide-react";
-// IMPORT THE NEW COMPONENT
-import CapsuleCard from "@/app/components/CapsuleCard";
+import { Clock } from "lucide-react";
+import DashboardClient from "@/app/components/DashboardClient"; // Import the Client UI
 
-// Helper functions
+// --- DATA FETCHING (Keep this on server) ---
 async function getSentCapsules(userId: string) {
   const params = {
     TableName: process.env.AUTH_DYNAMODB_TABLE,
@@ -36,37 +34,39 @@ async function getReceivedCapsules(userEmail: string) {
 export default async function Home() {
   const session = await getServerSession(authOptions);
 
-  const sentCapsules = session
-    ? await getSentCapsules((session.user as any).id)
-    : [];
-  const receivedCapsules = session
-    ? await getReceivedCapsules(session.user?.email!)
-    : [];
-
-  // 1. NOT LOGGED IN UI
+  // 1. LANDING PAGE (Not Logged In)
   if (!session) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <div className="glass-panel p-10 rounded-2xl max-w-lg w-full flex flex-col items-center gap-6">
-          <div className="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center mb-2 animate-pulse">
-            <Clock className="w-10 h-10 text-blue-400" />
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-black overflow-hidden relative">
+        {/* Background glow effect */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[128px]"></div>
+             <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[128px]"></div>
+        </div>
+
+        <div className="glass-panel p-10 rounded-3xl max-w-lg w-full flex flex-col items-center gap-8 relative z-10 border border-white/10 shadow-2xl">
+          <div className="w-24 h-24 bg-black/50 rounded-full flex items-center justify-center mb-2 border border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+            <Clock className="w-12 h-12 text-blue-400" />
           </div>
-          <h1 className="text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
-            Time Capsule
-          </h1>
-          <p className="text-gray-300 text-lg">
-            Send a message to the future. Preserve memories for eternity.
-          </p>
+          <div>
+            <h1 className="text-6xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-400 via-purple-400 to-blue-400 animate-pulse tracking-tighter">
+                TimeVault
+            </h1>
+            <p className="text-gray-400 text-lg mt-4 font-light">
+                Secure digital inheritance.<br/>Send a message to the future.
+            </p>
+          </div>
+          
           <div className="flex gap-4 w-full mt-4">
             <Link
               href="/signup"
-              className="flex-1 py-3 bg-blue-600 rounded-lg font-bold hover:bg-blue-500 transition shadow-lg shadow-blue-900/50"
+              className="flex-1 py-4 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition shadow-[0_0_20px_rgba(255,255,255,0.3)]"
             >
-              Sign Up
+              Get Started
             </Link>
             <Link
               href="/signin"
-              className="flex-1 py-3 bg-gray-700/50 border border-gray-600 rounded-lg font-bold hover:bg-gray-700 transition"
+              className="flex-1 py-4 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition"
             >
               Log In
             </Link>
@@ -76,83 +76,16 @@ export default async function Home() {
     );
   }
 
-  // 2. LOGGED IN DASHBOARD
+  // 2. LOGGED IN? FETCH DATA & RENDER DASHBOARD
+  const sentCapsules = await getSentCapsules((session.user as any).id);
+  const receivedCapsules = await getReceivedCapsules(session.user?.email!);
+
   return (
-    <div className="min-h-screen p-6 max-w-6xl mx-auto">
-      {/* HEADER */}
-      <header className="flex justify-between items-center mb-10 glass-panel p-4 rounded-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center font-bold text-lg">
-            {session.user?.name?.[0] || "U"}
-          </div>
-          <div>
-            <h1 className="font-bold text-white">{session.user?.name}</h1>
-            <p className="text-xs text-gray-400">{session.user?.email}</p>
-          </div>
-        </div>
-        <LogoutButton />
-      </header>
-
-      {/* ACTION BAR */}
-      <div className="flex justify-end mb-8">
-        <Link
-          href="/create"
-          className="group relative inline-flex items-center justify-center px-8 py-3 font-bold text-white transition-all duration-200 bg-blue-600 font-lg rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 hover:bg-blue-500 hover:scale-105 shadow-lg shadow-blue-900/50"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Bury New Memory
-        </Link>
-      </div>
-
-      {/* RECEIVED SECTION */}
-      <section className="mb-12">
-        <div className="flex items-center gap-2 mb-6">
-          <Inbox className="text-yellow-400" />
-          <h2 className="text-2xl font-bold text-white">Received Memories</h2>
-        </div>
-
-        {receivedCapsules.length === 0 ? (
-          <div className="glass-panel p-8 rounded-xl text-center text-gray-500 border-dashed border-2 border-gray-700">
-            No memories found in your mailbox.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* USE CAPSULE CARD COMPONENT */}
-            {receivedCapsules.map((capsule: any) => (
-              <CapsuleCard
-                key={capsule.id}
-                capsule={capsule}
-                isReceived={true}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* SENT SECTION */}
-      <section>
-        <div className="flex items-center gap-2 mb-6">
-          <Send className="text-blue-400" />
-          <h2 className="text-2xl font-bold text-white">Sent Capsules</h2>
-        </div>
-
-        {sentCapsules.length === 0 ? (
-          <div className="glass-panel p-8 rounded-xl text-center text-gray-500 border-dashed border-2 border-gray-700">
-            You haven't buried any memories yet.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* USE CAPSULE CARD COMPONENT */}
-            {sentCapsules.map((capsule: any) => (
-              <CapsuleCard
-                key={capsule.id}
-                capsule={capsule}
-                isReceived={false}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
+    <DashboardClient 
+        // FIX: Added '!' to force TypeScript to accept it, OR use '|| {}'
+        user={session.user!} 
+        sent={sentCapsules} 
+        received={receivedCapsules} 
+    />
   );
 }

@@ -245,5 +245,6 @@ export async function createCapsule(formData: FormData) {
   }
 
   revalidatePath("/");
-  redirect("/");
+  // redirect("/");
+  return { success: true };
 }

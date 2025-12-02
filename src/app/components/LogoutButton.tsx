@@ -1,14 +1,20 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { LogOut } from "lucide-react"; // Nice icon
+import { toast } from "sonner";
 
 export default function LogoutButton() {
   return (
     <button
-      onClick={() => signOut({ callbackUrl: "/" })} // Redirects to home after logout
-      className="px-6 py-2 mt-4 bg-red-600 text-white rounded hover:bg-red-500 transition"
+      onClick={() => {
+        toast.info("Logging out... See you in the future! 👋");
+        signOut({ callbackUrl: "/" });
+      }}
+      className="p-2 text-red-400 hover:bg-red-900/20 rounded-full transition"
+      title="Sign Out"
     >
-      Sign Out
+      <LogOut className="w-5 h-5" />
     </button>
   );
 }

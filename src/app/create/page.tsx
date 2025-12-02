@@ -1,119 +1,143 @@
 "use client";
 
 import { createCapsule } from "@/app/actions/capsule";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import MediaCapture from "@/app/components/MediaCapture"; 
+import { toast } from "sonner";
+import MediaCapture from "@/app/components/MediaCapture";
+import { ArrowLeft, Clock, Mail, FileText, Lock, Upload, Camera as CameraIcon } from "lucide-react";
 
 export default function CreateCapsulePage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
+  // "UPLOAD" | "CAMERA" state is now passed down to the component
   const [inputType, setInputType] = useState<"UPLOAD" | "CAMERA">("UPLOAD");
-
   const now = new Date().toISOString().slice(0, 16);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
-    setError("");
-
     const formData = new FormData(event.currentTarget);
 
-    if (inputType === "CAMERA" && capturedFile) {
-        formData.set("file", capturedFile);
-    } 
+    // Attach captured file if it exists
+    if (capturedFile) { formData.set("file", capturedFile); }
     
+    // Validation
     const fileToCheck = formData.get("file") as File;
     if (!fileToCheck || fileToCheck.size === 0) {
-        setError("Please upload a file or record a memory.");
-        setLoading(false);
-        return;
-    }
-    // Limit is set in next.config.ts (e.g. 10MB)
-    if (fileToCheck.size > 10 * 1024 * 1024) { 
-        setError("File is too large (Max 10MB)");
-        setLoading(false);
-        return;
+        toast.warning("Your capsule is empty. Please attach a memory.");
+        setLoading(false); return;
     }
 
+    // Submit
+    const toastId = toast.loading("Sealing your memory in the time vault...");
     const result = await createCapsule(formData);
 
     if (result?.error) {
-      setError(result.error);
+      toast.error(result.error, { id: toastId });
       setLoading(false);
+    } else {
+      toast.success("Capsule Buried Successfully! 🔒", { id: toastId });
+      setTimeout(() => { router.push("/"); router.refresh(); }, 1000);
     }
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md bg-gray-900 p-8 rounded-xl shadow-2xl border border-gray-800">
-        <h1 className="text-3xl font-bold mb-2 text-center text-blue-400">Bury a Capsule</h1>
-        
-        {error && <div className="bg-red-500/20 text-red-400 p-3 rounded mb-4 text-sm text-center">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          
-          {/* Title */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Title</label>
-            <input name="title" type="text" required className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:border-blue-500 focus:outline-none" />
-          </div>
-
-          {/* Recipient */}
-          <div>
-            <label className="block text-sm text-green-400 mb-1">To (Recipient Email)</label>
-            <input name="recipientEmail" type="email" required className="w-full p-3 rounded bg-gray-800 border border-green-600 focus:border-green-400 focus:outline-none" />
-          </div>
-
-          {/* Unlock Date */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Unlock Date</label>
-            <input name="unlockDate" type="datetime-local" required min={now} className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:border-blue-500 focus:outline-none" />
-          </div>
-
-          {/* Message */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Message</label>
-            <textarea name="message" rows={3} className="w-full p-3 rounded bg-gray-800 border border-gray-700 focus:border-blue-500 focus:outline-none resize-none" />
-          </div>
-
-          {/* ATTACHMENT SELECTION */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-2">Attachment</label>
-            <div className="flex gap-4 mb-4">
-                <button type="button" onClick={() => setInputType("UPLOAD")} className={`flex-1 py-2 rounded text-sm font-bold ${inputType === "UPLOAD" ? "bg-gray-700 text-white" : "bg-gray-800 text-gray-500 border border-gray-700"}`}>
-                    📂 File Upload
-                </button>
-                <button type="button" onClick={() => setInputType("CAMERA")} className={`flex-1 py-2 rounded text-sm font-bold ${inputType === "CAMERA" ? "bg-gray-700 text-white" : "bg-gray-800 text-gray-500 border border-gray-700"}`}>
-                    🔴 Live Record
-                </button>
+    // MAIN CONTAINER: Full screen, 2-column grid
+    <div className="min-h-screen p-4 lg:p-8 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto">
+      
+      {/* --- LEFT COLUMN: THE EDITOR FORM --- */}
+      <div className="w-full lg:w-[450px] flex flex-col">
+        {/* Header & Back Button */}
+        <div className="flex items-center gap-4 mb-6">
+            <button onClick={() => router.back()} aria-label="Back" className="p-3 glass-panel rounded-full hover:bg-white/10 transition-all group">
+                <ArrowLeft className="w-6 h-6 text-gray-300 group-hover:-translate-x-1 transition-transform" />
+            </button>
+            <div>
+                <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-purple-500">
+                    Create Capsule
+                </h1>
+                <p className="text-gray-400 text-sm">Design your message to the future.</p>
             </div>
+        </div>
 
-            {inputType === "UPLOAD" ? (
-                /* UPDATED INPUT: Added document types to accept */
-                <div className="flex flex-col gap-2">
-                    <input 
-                    name="file" 
-                    type="file" 
-                    accept="image/*,video/*,.pdf,.doc,.docx,.txt" 
-                    className="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-                    />
-                    <p className="text-xs text-gray-500">Supports: Images, Videos, PDF, Word, Text</p>
-                </div>
-            ) : (
-                <MediaCapture onCapture={setCapturedFile} />
-            )}
+        {/* The Form */}
+        <form onSubmit={handleSubmit} className="glass-panel p-8 rounded-2xl flex-1 flex flex-col gap-6 shadow-2xl">
+          
+          {/* Title Input */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-blue-300">
+                <FileText className="w-4 h-4" /> Title
+            </label>
+            <input name="title" type="text" required placeholder="e.g., 'A message for 2030'" className="w-full p-4 rounded-xl glass-input focus:ring-2 focus:ring-blue-500/50 transition-all text-lg placeholder:text-gray-600" />
           </div>
 
+          {/* Recipient Input */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-green-300">
+                <Mail className="w-4 h-4" /> Recipient Email
+            </label>
+            <input name="recipientEmail" type="email" required placeholder="future.self@example.com" className="w-full p-4 rounded-xl glass-input focus:ring-2 focus:ring-green-500/50 transition-all text-lg placeholder:text-gray-600" />
+          </div>
+
+          {/* Date Input */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-bold text-purple-300">
+                <Clock className="w-4 h-4" /> Unlock Date
+            </label>
+            <input name="unlockDate" type="datetime-local" required min={now} className="w-full p-4 rounded-xl glass-input focus:ring-2 focus:ring-purple-500/50 transition-all text-lg cursor-pointer" style={{colorScheme: 'dark'}} />
+          </div>
+
+          {/* Message Textarea */}
+          <div className="space-y-2 flex-1 flex flex-col">
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-300">
+                Message (Optional)
+            </label>
+            <textarea name="message" placeholder="Write something meaningful..." className="w-full p-4 rounded-xl glass-input focus:ring-2 focus:ring-gray-500/50 transition-all text-lg resize-none flex-1 min-h-[150px] placeholder:text-gray-600" />
+          </div>
+
+          {/* Hidden File Input (handled by MediaCapture component) */}
+          <input type="hidden" name="file-check" value={capturedFile ? "ok" : ""} />
+
+          {/* Submit Button */}
           <button 
             type="submit" 
             disabled={loading}
-            className="mt-2 w-full p-3 bg-linear-to-r from-blue-600 to-purple-600 rounded font-bold hover:opacity-90 transition disabled:opacity-50"
+            className="w-full p-5 bg-linear-to-r from-blue-600 via-purple-600 to-blue-600 bg-size-[200%_auto] hover:bg-position-[right_center] rounded-xl font-bold text-xl text-white transition-all duration-500 shadow-lg shadow-purple-900/40 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group"
           >
-            {loading ? "Burying..." : "🔒 Bury Capsule"}
+            {loading ? <span className="animate-pulse">Burying Memory...</span> : <> <Lock className="w-6 h-6 group-hover:scale-110 transition-transform" /> Bury Capsule </>}
           </button>
         </form>
       </div>
+
+      {/* --- RIGHT COLUMN: THE MEDIA STUDIO --- */}
+      <div className="flex-1 flex flex-col gap-6 h-[800px] lg:h-auto">
+        
+        {/* Mode Switcher (Tabs) */}
+        <div className="flex p-1 glass-panel rounded-xl">
+            <button type="button" onClick={() => { setInputType("UPLOAD"); setCapturedFile(null); }} className={`flex-1 py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-2 transition-all ${inputType === "UPLOAD" ? "bg-blue-600/80 text-white shadow-lg" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+                <Upload className="w-5 h-5" /> Upload File
+            </button>
+            <button type="button" onClick={() => { setInputType("CAMERA"); setCapturedFile(null); }} className={`flex-1 py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-2 transition-all ${inputType === "CAMERA" ? "bg-purple-600/80 text-white shadow-lg" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+                <CameraIcon className="w-5 h-5" /> Live Studio
+            </button>
+        </div>
+
+        {/* The Big Media Component */}
+        <div className="flex-1 relative group">
+            {/* The component handles both modes now based on the prop */}
+            <MediaCapture onCapture={setCapturedFile} mode={inputType} />
+            
+            {/* Success Indicator Overlay */}
+            {capturedFile && (
+                <div className="absolute top-4 left-4 bg-green-600/90 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg backdrop-blur animate-in fade-in slide-in-from-top-4">
+                    ✅ Memory Attached
+                </div>
+            )}
+        </div>
+      </div>
+
     </div>
   );
 }
