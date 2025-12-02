@@ -9,11 +9,13 @@ export const authOptions: NextAuthOptions = {
   adapter: DynamoDBAdapter(dynamoClient, { tableName: process.env.AUTH_DYNAMODB_TABLE }),
   session: {
     strategy: "jwt",
+    maxAge: 1 * 60 * 60,
   },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      allowDangerousEmailAccountLinking: true,
     }),
     CredentialsProvider({
       name: "Credentials",
@@ -52,11 +54,9 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  // START OF ADDED SECTION
   pages: {
-    signIn: '/signin', // <--- This tells NextAuth to use your custom page
+    signIn: '/signin',
   }
-  // END OF ADDED SECTION
 };
 
 const handler = NextAuth(authOptions);

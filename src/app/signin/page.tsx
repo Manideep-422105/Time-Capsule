@@ -22,7 +22,7 @@ export default function SignInPage() {
     if (result?.error) {
       setError("Invalid email or password");
     } else {
-      router.push("/signin"); // Redirect to Dashboard on success
+      router.push("/");
       router.refresh();
     }
   };
@@ -42,9 +42,9 @@ export default function SignInPage() {
         </button>
 
         <div className="flex items-center my-4">
-          <div className="flex-grow border-t border-gray-600"></div>
+          <div className="grow border-t border-gray-600"></div>
           <span className="mx-2 text-gray-500">OR</span>
-          <div className="flex-grow border-t border-gray-600"></div>
+          <div className="grow border-t border-gray-600"></div>
         </div>
 
         {/* Credentials Login Form */}
