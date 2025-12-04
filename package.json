@@ -9,13 +9,16 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.943.0",
     "@aws-sdk/client-s3": "^3.940.0",
     "@aws-sdk/client-ses": "^3.940.0",
+    "@aws-sdk/lib-dynamodb": "^3.943.0",
     "@aws-sdk/s3-request-presigner": "^3.940.0",
     "@google/generative-ai": "^0.24.1",
     "@stripe/stripe-js": "^8.5.3",
     "lucide-react": "^0.555.0",
     "next": "16.0.3",
+    "next-auth": "^4.24.13",
     "nodemailer": "^7.0.11",
     "react": "19.2.0",
     "react-dom": "19.2.0",
