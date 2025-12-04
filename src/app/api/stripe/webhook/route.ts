@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       if (userEmail) {
         try {
           const emailCommand = new SendEmailCommand({
-            Source: "manideep17072004@gmail.com", // <--- YOUR VERIFIED EMAIL
+            Source: "manideep17072004@gmail.com",
             Destination: { ToAddresses: [userEmail] },
             Message: {
               Subject: { Data: `Welcome to Time Vault PRO! 🌟` },

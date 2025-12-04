@@ -11,7 +11,7 @@ import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 // 1. IMPORT AI FUNCTION
-import { generateSummary } from "@/app/actions/ai"; 
+import { generateSummary } from "@/app/actions/ai";
 
 // Initialize S3
 const s3Client = new S3Client({
@@ -49,12 +49,12 @@ export async function deleteCapsule(capsuleId: string) {
     if (!Item) return { error: "Capsule not found" };
 
     if (Item.fileUrl) {
-      const bucketUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.amazonaws.com/`;
+      const bucketUrl = `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/`;
       const key = Item.fileUrl.replace(bucketUrl, "");
 
       await s3Client.send(
         new DeleteObjectCommand({
-          Bucket: process.env.AWS_S3_BUCKET_NAME,
+          Bucket: process.env.S3_BUCKET_NAME,
           Key: key,
         })
       );
@@ -96,10 +96,10 @@ export async function openCapsule(capsuleId: string, senderId: string) {
     const isUnlocked = new Date() >= new Date(Item.unlockDate);
     if (!isUnlocked) return { error: "This capsule is still locked!" };
 
-    const bucketUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.amazonaws.com/`;
+    const bucketUrl = `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/`;
     const key = Item.fileUrl.replace(bucketUrl, "");
     const command = new GetObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME,
+      Bucket: process.env.S3_BUCKET_NAME,
       Key: key,
     });
     const signedUrl = await getSignedUrl(s3Client, command, {
@@ -114,7 +114,7 @@ export async function openCapsule(capsuleId: string, senderId: string) {
 
     if (SenderProfile && SenderProfile.email) {
       const emailCommand = new SendEmailCommand({
-        Source: "manideep17072004@gmail.com", 
+        Source: "manideep17072004@gmail.com",
         Destination: { ToAddresses: [SenderProfile.email] },
         Message: {
           Subject: { Data: `Your Time Capsule was just opened!` },
@@ -122,7 +122,11 @@ export async function openCapsule(capsuleId: string, senderId: string) {
             Html: {
               Data: `
                     <h1>Echo Notification 🔔</h1>
-                    <p>Your capsule <strong>"${Item.title}"</strong> was just opened by <strong>${session.user?.email || "Unknown User"}</strong>.</p>
+                    <p>Your capsule <strong>"${
+                      Item.title
+                    }"</strong> was just opened by <strong>${
+                session.user?.email || "Unknown User"
+              }</strong>.</p>
                     <p>The memory has been delivered successfully.</p>
                 `,
             },
@@ -161,15 +165,14 @@ export async function createCapsule(formData: FormData) {
 
     await s3Client.send(
       new PutObjectCommand({
-        Bucket: process.env.AWS_S3_BUCKET_NAME,
+        Bucket: process.env.S3_BUCKET_NAME,
         Key: fileName,
         Body: buffer,
         ContentType: file.type,
       })
     );
 
-    const fileUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.amazonaws.com/${fileName}`;
-
+    const fileUrl = `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/${fileName}`;
 
     // 3. DYNAMODB SAVE
     const capsuleId = uuidv4();
@@ -189,7 +192,6 @@ export async function createCapsule(formData: FormData) {
         recipientEmail: recipientEmail,
         senderName: userName,
         message: message || "",
-        
 
         fileUrl: fileUrl,
         unlockDate: unlockDate,
