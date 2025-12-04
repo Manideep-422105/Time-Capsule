@@ -15,6 +15,10 @@ import {
   Camera as CameraIcon,
 } from "lucide-react";
 import SpotifySearch from "@/app/components/SpotifySearch";
+import { generateAiPrompts } from "@/app/actions/ai";
+import { Sparkles, Loader2 } from "lucide-react";
+import { refineMessage } from "@/app/actions/ai";
+import { Wand, RotateCcw } from "lucide-react"; // Add Wand and RotateCcw
 
 export default function CreateCapsulePage() {
   const router = useRouter();
@@ -24,7 +28,9 @@ export default function CreateCapsulePage() {
   const [inputType, setInputType] = useState<"UPLOAD" | "CAMERA">("UPLOAD");
   const now = new Date().toISOString().slice(0, 16);
   const [spotifyTrackId, setSpotifyTrackId] = useState<string | null>(null);
-
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [messageText, setMessageText] = useState(""); // New state for input tracking
+  const [originalText, setOriginalText] = useState("");
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -58,7 +64,33 @@ export default function CreateCapsulePage() {
       }, 1000);
     }
   }
+  const handleRefine = async () => {
+    if (!messageText.trim()) {
+      return toast.error("Please write a message to refine.");
+    }
 
+    setIsAiLoading(true);
+    const toastId = toast.loading("Refining your message...");
+
+    // Save the original text before modification
+    setOriginalText(messageText);
+
+    const result = await refineMessage(messageText);
+
+    if (result.content) {
+      setMessageText(result.content); // Update the textarea content with the refined text
+      toast.success("Message refined!", { id: toastId });
+    } else {
+      toast.error(result.error || "Refinement failed.", { id: toastId });
+    }
+    setIsAiLoading(false);
+  };
+
+  const handleRevert = () => {
+    setMessageText(originalText);
+    setOriginalText("");
+    toast.info("Reverted to original message.");
+  };
   return (
     // MAIN CONTAINER: Full screen, 2-column grid
     <div className="min-h-screen p-4 lg:p-8 flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto">
@@ -132,15 +164,86 @@ export default function CreateCapsulePage() {
           </div>
 
           {/* Message Textarea */}
+          {/* Message Textarea with AI Button */}
+          {/* Message Textarea with AI Buttons */}
           <div className="space-y-2 flex-1 flex flex-col">
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-300">
-              Message (Optional)
-            </label>
+            <div className="flex justify-between items-center flex-wrap gap-2">
+              <label className="flex items-center gap-2 text-sm font-bold text-gray-300">
+                Message (Optional)
+              </label>
+
+              {/* AI ACTION BUTTONS GROUP */}
+              <div className="flex gap-2">
+                {/* 1. REVERT BUTTON (Shows only after refining) */}
+                {originalText && (
+                  <button
+                    type="button"
+                    onClick={handleRevert}
+                    disabled={isAiLoading}
+                    className="text-xs flex items-center gap-1 bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded-full border border-yellow-500/30 hover:bg-yellow-500/40 transition-all"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Revert
+                  </button>
+                )}
+
+                {/* 2. REFINE BUTTON */}
+                <button
+                  type="button"
+                  onClick={handleRefine}
+                  disabled={isAiLoading || !messageText.trim()}
+                  className="text-xs flex items-center gap-1 bg-green-500/20 text-green-300 px-2 py-1 rounded-full border border-green-500/30 hover:bg-green-500/40 transition-all"
+                >
+                  {isAiLoading ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Wand className="w-3 h-3" />
+                  )}
+                  {isAiLoading ? "Refining..." : "Refine Draft"}
+                </button>
+
+                {/* 3. GENERATE PROMPTS (AI Assist) BUTTON */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    // Keep existing prompt generation logic
+                    setIsAiLoading(true);
+                    const toastId = toast.loading(
+                      "Consulting the Time Oracle..."
+                    );
+                    const result = await generateAiPrompts();
+
+                    if (result.content) {
+                      const separator = messageText ? "\n\n" : "";
+                      const newText = `${messageText}${separator}--- AI Inspiration ---\n${result.content}\n\nMy Answer:\n`;
+                      setMessageText(newText);
+                      toast.success("Ideas added!", { id: toastId });
+                    } else {
+                      toast.error("AI failed to respond.", { id: toastId });
+                    }
+                    setIsAiLoading(false);
+                  }}
+                  disabled={isAiLoading}
+                  className="text-xs flex items-center gap-1 bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full border border-purple-500/30 hover:bg-purple-500/40 transition-all"
+                >
+                  <Sparkles className="w-3 h-3" /> Get Prompts
+                </button>
+              </div>
+            </div>
+
             <textarea
               name="message"
               placeholder="Write something meaningful..."
-              className="w-full p-4 rounded-xl glass-input focus:ring-2 focus:ring-gray-500/50 transition-all text-lg resize-none flex-1 min-h-[150px] placeholder:text-gray-600"
+              value={messageText} // Bind state
+              onChange={(e) => {
+                setMessageText(e.target.value);
+                // Clear original text if user starts typing again after refinement
+                if (originalText) setOriginalText("");
+              }}
+              className="w-full p-4 rounded-xl glass-input focus:ring-2 focus:ring-gray-500/50 transition-all text-lg resize-none flex-1 min-h-[150px] placeholder:text-gray-600 font-sans"
             />
+
+            {/* Hidden input must still send the final value to the server action */}
+            <input type="hidden" name="message" value={messageText} />
           </div>
           {/* --- NEW SPOTIFY SECTION --- */}
           <SpotifySearch onSelect={setSpotifyTrackId} />

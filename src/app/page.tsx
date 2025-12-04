@@ -7,28 +7,55 @@ import DashboardClient from "@/app/components/DashboardClient"; // Import the Cl
 
 // --- DATA FETCHING (Keep this on server) ---
 async function getSentCapsules(userId: string) {
-  const params = {
-    TableName: process.env.AUTH_DYNAMODB_TABLE,
-    KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
-    ExpressionAttributeValues: { ":pk": `USER#${userId}`, ":sk": "CAPSULE#" },
-    ScanIndexForward: false,
-  };
-  const { Items } = await dynamoClient.query(params);
-  return Items || [];
+  try {
+    const params = {
+      TableName: process.env.AUTH_DYNAMODB_TABLE,
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
+      ExpressionAttributeValues: { ":pk": `USER#${userId}`, ":sk": "CAPSULE#" },
+      ScanIndexForward: false,
+    };
+    const { Items } = await dynamoClient.query(params);
+    return Items || [];
+  } catch (error) {
+    console.error("Error fetching sent capsules:", error);
+    return [];
+  }
 }
 
 async function getReceivedCapsules(userEmail: string) {
-  const params = {
-    TableName: process.env.AUTH_DYNAMODB_TABLE,
-    IndexName: "GSI1",
-    KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
-    ExpressionAttributeValues: {
-      ":pk": `RECIPIENT#${userEmail}`,
-      ":sk": "CAPSULE#",
-    },
-  };
-  const { Items } = await dynamoClient.query(params);
-  return Items || [];
+  try {
+    const params = {
+      TableName: process.env.AUTH_DYNAMODB_TABLE,
+      IndexName: "GSI1",
+      KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
+      ExpressionAttributeValues: {
+        ":pk": `RECIPIENT#${userEmail}`,
+        ":sk": "CAPSULE#",
+      },
+    };
+    const { Items } = await dynamoClient.query(params);
+    return Items || [];
+  } catch (error) {
+    console.error("Error fetching received capsules:", error);
+    return [];
+  }
+}
+
+async function getUserPremiumStatus(userId: string) {
+  try {
+    const params = {
+      TableName: process.env.AUTH_DYNAMODB_TABLE,
+      Key: {
+        pk: `USER#${userId}`,
+        sk: `USER#${userId}`,
+      },
+    };
+    const { Item } = await dynamoClient.get(params);
+    return Item?.isPremium || false;
+  } catch (error) {
+    console.error("Error fetching user status:", error);
+    return false;
+  }
 }
 
 export default async function Home() {
@@ -40,8 +67,8 @@ export default async function Home() {
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-black overflow-hidden relative">
         {/* Background glow effect */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[128px]"></div>
-             <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[128px]"></div>
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[128px]"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[128px]"></div>
         </div>
 
         <div className="glass-panel p-10 rounded-3xl max-w-lg w-full flex flex-col items-center gap-8 relative z-10 border border-white/10 shadow-2xl">
@@ -49,14 +76,16 @@ export default async function Home() {
             <Clock className="w-12 h-12 text-blue-400" />
           </div>
           <div>
-            <h1 className="text-6xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-400 via-purple-400 to-blue-400 animate-pulse tracking-tighter">
-                TimeVault
+            <h1 className="text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 animate-pulse tracking-tighter">
+              TimeVault
             </h1>
             <p className="text-gray-400 text-lg mt-4 font-light">
-                Secure digital inheritance.<br/>Send a message to the future.
+              Secure digital inheritance.
+              <br />
+              Send a message to the future.
             </p>
           </div>
-          
+
           <div className="flex gap-4 w-full mt-4">
             <Link
               href="/signup"
@@ -76,16 +105,23 @@ export default async function Home() {
     );
   }
 
-  // 2. LOGGED IN? FETCH DATA & RENDER DASHBOARD
-  const sentCapsules = await getSentCapsules((session.user as any).id);
-  const receivedCapsules = await getReceivedCapsules(session.user?.email!);
+  // 2. LOGGED IN? FETCH DATA
+  const userId = (session.user as any).id;
+  
+  // Parallel Fetching for Speed
+  const [sentCapsules, receivedCapsules, isPremium] = await Promise.all([
+    getSentCapsules(userId),
+    getReceivedCapsules(session.user?.email!),
+    getUserPremiumStatus(userId),
+  ]);
 
+  // 3. RENDER DASHBOARD CLIENT
   return (
-    <DashboardClient 
-        // FIX: Added '!' to force TypeScript to accept it, OR use '|| {}'
-        user={session.user!} 
-        sent={sentCapsules} 
-        received={receivedCapsules} 
+    <DashboardClient
+      user={session.user!}
+      sent={sentCapsules}
+      received={receivedCapsules}
+      isPremium={isPremium} // Pass the premium status to the UI
     />
   );
 }
