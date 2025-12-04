@@ -159,6 +159,7 @@ export async function createCapsule(formData: FormData) {
   const title = formData.get("title") as string;
   const unlockDate = formData.get("unlockDate") as string;
   const recipientEmail = formData.get("recipientEmail") as string;
+  const spotifyTrackId = formData.get("spotifyTrackId") as string;
   const file = formData.get("file") as File;
 
   try {
@@ -193,6 +194,7 @@ export async function createCapsule(formData: FormData) {
         type: "CAPSULE",
         id: capsuleId,
         title: title,
+        spotifyTrackId: spotifyTrackId,
         recipientEmail: recipientEmail,
         senderName: userName,
         message: formData.get("message") || "",
