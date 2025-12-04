@@ -79,7 +79,7 @@ export default function DashboardClient({
           <div>
             {/* 2. SHOW PRO BADGE */}
             <h1 className="text-3xl font-extrabold flex items-center gap-2">
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600 tracking-tighter">
+              <span className="bg-clip-text text-transparent bg-linear-to-r from-blue-400 to-purple-600 tracking-tighter">
                 TimeVault
               </span>
               {isPremium && (
@@ -170,7 +170,7 @@ export default function DashboardClient({
                 className="w-10 h-10 rounded-full border-2 border-blue-500/50"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg">
+              <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-purple-500 flex items-center justify-center font-bold text-white shadow-lg">
                 {user.name?.[0] || "U"}
               </div>
             )}
@@ -335,7 +335,7 @@ export default function DashboardClient({
                   className="w-24 h-24 rounded-full mb-4 border-4 border-blue-500/30 object-cover"
                 />
               ) : (
-                <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-3xl font-bold text-white mb-4 shadow-[0_0_30px_rgba(59,130,246,0.5)]">
+                <div className="w-24 h-24 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-3xl font-bold text-white mb-4 shadow-[0_0_30px_rgba(59,130,246,0.5)]">
                   {user.name?.[0] || "U"}
                 </div>
               )}

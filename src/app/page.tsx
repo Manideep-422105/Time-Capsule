@@ -76,7 +76,7 @@ export default async function Home() {
             <Clock className="w-12 h-12 text-blue-400" />
           </div>
           <div>
-            <h1 className="text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 animate-pulse tracking-tighter">
+            <h1 className="text-6xl font-black bg-clip-text text-transparent bg-linear-to-r from-blue-400 via-purple-400 to-blue-400 animate-pulse tracking-tighter">
               TimeVault
             </h1>
             <p className="text-gray-400 text-lg mt-4 font-light">

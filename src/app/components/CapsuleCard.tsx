@@ -13,7 +13,7 @@ export default function CapsuleCard({ capsule, isReceived }: { capsule: any, isR
     const senderId = capsule.pk.split("#")[1];
 
     return (
-        <div className={`glass-panel p-6 rounded-xl flex flex-col gap-4 h-auto min-h-[14rem] transition-all hover:-translate-y-1 duration-300 ${isUnlocked ? 'border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'border-gray-700'}`}>
+        <div className={`glass-panel p-6 rounded-xl flex flex-col gap-4 h-auto min-h-56 transition-all hover:-translate-y-1 duration-300 ${isUnlocked ? 'border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'border-gray-700'}`}>
             <div className="flex-1 space-y-3">
                 <div className="flex justify-between items-start">
                     <h3 className="font-bold text-lg truncate pr-2 text-white">{capsule.title}</h3>

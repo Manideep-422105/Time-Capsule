@@ -25,7 +25,7 @@ export default function UpgradeModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-[#0a0a15] border border-purple-500/30 w-full max-w-md rounded-2xl p-8 relative shadow-2xl shadow-purple-900/40">
         <button
           onClick={onClose}
@@ -35,7 +35,7 @@ export default function UpgradeModal({ onClose }: { onClose: () => void }) {
         </button>
 
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-purple-500/30">
+          <div className="w-16 h-16 bg-linear-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-purple-500/30">
             <Zap className="w-8 h-8 text-white fill-white" />
           </div>
           <h2 className="text-3xl font-bold text-white mb-2">Upgrade to Pro</h2>

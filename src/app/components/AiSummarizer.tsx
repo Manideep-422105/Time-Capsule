@@ -26,7 +26,7 @@ export default function AiSummarizer({ message }: AiSummarizerProps) {
 
   if (summary) {
     return (
-      <div className="mb-3 p-3 rounded-lg bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/30 flex gap-2 items-start transition-all duration-300">
+      <div className="mb-3 p-3 rounded-lg bg-linear-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/30 flex gap-2 items-start transition-all duration-300">
         <Sparkles className="w-4 h-4 text-purple-300 shrink-0 mt-0.5" />
         <p className="text-xs text-purple-200 italic leading-relaxed flex-1">
           {summary}
