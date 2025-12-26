@@ -112,8 +112,10 @@ export async function openCapsule(capsuleId: string, senderId: string) {
     const { Item } = await dynamoClient.get(getParams);
 
     if (!Item) return { error: "Capsule not found" };
-
-    const isUnlocked = new Date() >= new Date(Item.unlockDate);
+    const now = new Date();
+    const istOffeset=5.5*60*60*1000;
+    const istTime=new Date(now.getTime()+istOffeset);
+    const isUnlocked = istTime >= new Date(Item.unlockDate);
 
     if (!isUnlocked) return { error: "This capsule is still locked!" };
 

@@ -3,15 +3,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
-
-// Use working model
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash"
 });
 
-/**
- * HELPER: Robust wrapper to handle Retries and Rate Limits (429)
- */
 async function safeAiCall(prompt: string, retries = 2, delay = 2500) {
   for (let i = 0; i <= retries; i++) {
     try {
@@ -31,9 +26,6 @@ async function safeAiCall(prompt: string, retries = 2, delay = 2500) {
   }
 }
 
-/**
- * 1. Generates Nostalgic Prompts
- */
 export async function generateAiPrompts() {
   try {
     const prompt =
@@ -46,9 +38,6 @@ export async function generateAiPrompts() {
   }
 }
 
-/**
- * 2. Combined Action
- */
 export async function processMessage(text: string) {
   if (!text || text.length < 10) {
     return { error: "Message is too short to process." };

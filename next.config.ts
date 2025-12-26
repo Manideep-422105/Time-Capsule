@@ -1,17 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb', // Increase this to 50mb if you plan on longer videos
+      bodySizeLimit: '10mb',
     },
   },
-  
-  // ⚠️ FIX: This bakes the environment variables into the build
-  // so the server can access them on Amplify.
   env: {
-    // DynamoDB Credentials (Fixes the "credential object not valid" error)
     AUTH_DYNAMODB_ID: process.env.AUTH_DYNAMODB_ID,
     AUTH_DYNAMODB_SECRET: process.env.AUTH_DYNAMODB_SECRET,
     AUTH_DYNAMODB_REGION: process.env.AUTH_DYNAMODB_REGION,
