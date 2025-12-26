@@ -1,7 +1,16 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { Camera, Video, Square, RefreshCw, UploadCloud } from "lucide-react";
+import { 
+  Camera, 
+  Video, 
+  Square, 
+  RefreshCw, 
+  UploadCloud, 
+  Image as ImageIcon, 
+  Film,
+  FileText 
+} from "lucide-react";
 
 interface MediaCaptureProps {
   onCapture: (file: File | null) => void;
@@ -13,34 +22,49 @@ export default function MediaCapture({ onCapture, mode }: MediaCaptureProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [capturedMediaType, setCapturedMediaType] = useState<"image" | "video" | "other" | null>(null);
+  const [fileName, setFileName] = useState<string>("");
+  
   const [cameraMode, setCameraMode] = useState<"PHOTO" | "VIDEO">("PHOTO");
+  
   const chunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- UPDATED USE EFFECT WITH CLEANUP ---
+  // --- FIX: Stop camera immediately when switching modes ---
+  useEffect(() => {
+    if (mode === "UPLOAD") {
+      stopCamera();
+    }
+  }, [mode]);
+
+  // --- Existing Stream Logic ---
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
     }
-
-    // Cleanup: Stop camera when component unmounts (leaving the page)
     return () => {
+      // Cleanup on unmount
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
   }, [stream]);
 
-  // --- CAMERA FUNCTIONS ---
-  async function startCamera(forceMode?: "PHOTO" | "VIDEO") {
-    const currentMode = forceMode || cameraMode;
-    stopCamera(); // Ensure clean slate
+  // --- CAMERA LOGIC ---
+  async function startCamera(targetMode: "PHOTO" | "VIDEO") {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1080 } }, 
-        audio: currentMode === "VIDEO" 
+        audio: targetMode === "VIDEO" 
       });
+      
+      setCameraMode(targetMode);
       setStream(mediaStream);
     } catch (err) {
       console.error("Camera Error:", err);
@@ -49,7 +73,15 @@ export default function MediaCapture({ onCapture, mode }: MediaCaptureProps) {
   }
 
   function stopCamera() {
-    if (stream) { stream.getTracks().forEach(track => track.stop()); setStream(null); }
+    if (stream) { 
+      stream.getTracks().forEach(track => track.stop()); 
+      setStream(null); 
+    }
+  }
+
+  function switchCameraMode(newMode: "PHOTO" | "VIDEO") {
+    if (newMode === cameraMode) return;
+    startCamera(newMode);
   }
 
   function takePhoto() {
@@ -67,46 +99,114 @@ export default function MediaCapture({ onCapture, mode }: MediaCaptureProps) {
   function startRecording() {
     if (!stream) return;
     chunksRef.current = [];
-    const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-    recorder.onstop = () => { handleCapture(new File([new Blob(chunksRef.current, { type: "video/webm" })], "capture.webm", { type: "video/webm" })); };
-    recorder.start(); setIsRecording(true); mediaRecorderRef.current = recorder;
+    
+    try {
+        const options = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") 
+            ? { mimeType: "video/webm;codecs=vp9" }
+            : MediaRecorder.isTypeSupported("video/webm")
+            ? { mimeType: "video/webm" }
+            : undefined;
+
+        const recorder = new MediaRecorder(stream, options);
+        
+        recorder.ondataavailable = (e) => { 
+            if (e.data && e.data.size > 0) {
+                chunksRef.current.push(e.data);
+            }
+        };
+        
+        recorder.onstop = () => { 
+            const blob = new Blob(chunksRef.current, { type: "video/webm" });
+            const file = new File([blob], "capture.webm", { type: "video/webm" });
+            handleCapture(file);
+        };
+        
+        recorder.start(200); 
+        setIsRecording(true); 
+        mediaRecorderRef.current = recorder;
+    } catch (error) {
+        console.error("Recorder Init Error:", error);
+    }
   }
 
   function stopRecording() {
-    if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); setIsRecording(false); }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") { 
+        mediaRecorderRef.current.stop(); 
+        setIsRecording(false); 
+    }
   }
 
-  // --- FILE FUNCTIONS ---
+  // --- FILE HANDLING ---
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) handleCapture(file);
   }
 
-  // --- COMMON FUNCTIONS ---
   function handleCapture(file: File) {
-    setPreviewUrl(URL.createObjectURL(file));
-    onCapture(file); stopCamera();
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    setFileName(file.name);
+    
+    if (file.type.startsWith("video/") || file.name.endsWith(".webm") || file.name.endsWith(".mp4")) {
+        setCapturedMediaType("video");
+    } else if (file.type.startsWith("image/")) {
+        setCapturedMediaType("image");
+    } else {
+        setCapturedMediaType("other");
+    }
+
+    onCapture(file); 
+    stopCamera();
   }
 
   function reset() {
-    setPreviewUrl(null); onCapture(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null); 
+    setCapturedMediaType(null);
+    setFileName("");
+    onCapture(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    
     if (mode === "CAMERA") startCamera(cameraMode);
   }
 
-  // --- UI RENDERING ---
+  // --- RENDER ---
   return (
-    <div className="w-full h-full glass-panel rounded-2xl overflow-hidden relative flex flex-col">
+    <div className="w-full h-full glass-panel rounded-2xl overflow-hidden relative flex flex-col min-h-[400px]">
+      
       {previewUrl ? (
-        <div className="relative w-full h-full bg-black flex items-center justify-center group">
-          {previewUrl.includes("video") ? (
-             <video src={previewUrl} controls className="w-full h-full object-contain" />
-          ) : (
+        <div className="relative w-full h-full bg-black flex items-center justify-center group p-4">
+          
+          {capturedMediaType === "video" && (
+             <video 
+                key={previewUrl} 
+                src={previewUrl} 
+                controls 
+                autoPlay 
+                className="w-full h-full object-contain max-h-[600px]" 
+             />
+          )}
+
+          {capturedMediaType === "image" && (
              <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
           )}
-          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button type="button" onClick={reset} aria-label="Retake Memory" className="p-3 bg-black/60 hover:bg-red-600/80 rounded-full text-white backdrop-blur-md transition-all">
+
+          {capturedMediaType === "other" && (
+             <div className="flex flex-col items-center justify-center text-gray-200 gap-4">
+                <div className="p-6 bg-white/10 rounded-2xl border border-white/20">
+                   <FileText className="w-20 h-20 text-blue-400" />
+                </div>
+                <div className="text-center">
+                    <p className="text-xl font-bold">{fileName}</p>
+                    <p className="text-sm text-gray-400 mt-1">Document attached</p>
+                </div>
+             </div>
+          )}
+
+          <div className="absolute top-4 right-4 z-10">
+              <button type="button" onClick={reset} className="p-3 bg-black/60 hover:bg-red-600/80 rounded-full text-white backdrop-blur-md transition-all shadow-lg">
                   <RefreshCw className="w-6 h-6" />
               </button>
           </div>
@@ -117,16 +217,21 @@ export default function MediaCapture({ onCapture, mode }: MediaCaptureProps) {
             <UploadCloud className="w-20 h-20 mb-4 opacity-70" />
             <p className="text-xl font-semibold">Click to Upload</p>
             <p className="text-sm">Images, Videos, PDFs, Documents</p>
-            <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx,.txt" hidden onChange={handleFileChange} />
+            <input 
+                ref={fileInputRef} 
+                type="file" 
+                hidden 
+                onChange={handleFileChange} 
+            />
           </div>
         ) : (
           !stream ? (
             <div className="flex-1 flex items-center justify-center gap-6">
-                <button type="button" onClick={() => { setCameraMode("PHOTO"); startCamera("PHOTO"); }} className="flex flex-col items-center gap-3 p-6 glass-panel rounded-xl hover:bg-blue-600/20 transition-all group">
+                <button type="button" onClick={() => startCamera("PHOTO")} className="flex flex-col items-center gap-3 p-6 glass-panel rounded-xl hover:bg-blue-600/20 transition-all group">
                     <Camera className="w-12 h-12 text-blue-400 group-hover:scale-110 transition-transform" />
                     <span className="text-lg font-bold">Take Photo</span>
                 </button>
-                <button type="button" onClick={() => { setCameraMode("VIDEO"); startCamera("VIDEO"); }} className="flex flex-col items-center gap-3 p-6 glass-panel rounded-xl hover:bg-purple-600/20 transition-all group">
+                <button type="button" onClick={() => startCamera("VIDEO")} className="flex flex-col items-center gap-3 p-6 glass-panel rounded-xl hover:bg-purple-600/20 transition-all group">
                     <Video className="w-12 h-12 text-purple-400 group-hover:scale-110 transition-transform" />
                     <span className="text-lg font-bold">Record Video</span>
                 </button>
@@ -134,16 +239,38 @@ export default function MediaCapture({ onCapture, mode }: MediaCaptureProps) {
           ) : (
             <div className="relative w-full h-full bg-black">
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" />
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-linear-to-t from-black/80 to-transparent flex justify-center items-center gap-8">
+                
+                {!isRecording && (
+                   <div className="absolute top-6 left-0 right-0 flex justify-center z-10">
+                     <div className="bg-black/50 backdrop-blur-md p-1 rounded-full flex gap-1 border border-white/10">
+                        <button 
+                          type="button"
+                          onClick={() => switchCameraMode("PHOTO")}
+                          className={`px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 transition-all ${cameraMode === "PHOTO" ? "bg-white text-black" : "text-gray-300 hover:bg-white/10"}`}
+                        >
+                          <ImageIcon className="w-3 h-3" /> Photo
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => switchCameraMode("VIDEO")}
+                          className={`px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 transition-all ${cameraMode === "VIDEO" ? "bg-red-500 text-white" : "text-gray-300 hover:bg-white/10"}`}
+                        >
+                          <Film className="w-3 h-3" /> Video
+                        </button>
+                     </div>
+                   </div>
+                )}
+
+                <div className="absolute bottom-0 left-0 right-0 p-8 bg-linear-to-t from-black/80 to-transparent flex justify-center items-center gap-8">
                     {cameraMode === "PHOTO" ? (
-                        <button type="button" onClick={takePhoto} aria-label="Take Photo" className="w-20 h-20 bg-white rounded-full border-4 border-gray-300 hover:bg-gray-200 hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)]"></button>
+                        <button type="button" onClick={takePhoto} className="w-20 h-20 bg-white rounded-full border-4 border-gray-300 hover:bg-gray-200 hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)]"></button>
                     ) : (
                         isRecording ? (
-                            <button type="button" onClick={stopRecording} aria-label="Stop Recording" className="w-20 h-20 bg-red-600 rounded-full border-4 border-white animate-pulse flex items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.5)]">
+                            <button type="button" onClick={stopRecording} className="w-20 h-20 bg-red-600 rounded-full border-4 border-white animate-pulse flex items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.5)]">
                                 <Square className="w-8 h-8 text-white" fill="currentColor" />
                             </button>
                         ) : (
-                            <button type="button" onClick={startRecording} aria-label="Start Recording" className="w-20 h-20 bg-red-600 rounded-full border-4 border-gray-300 hover:bg-red-500 hover:scale-105 transition-all shadow-[0_0_20px_rgba(220,38,38,0.3)]"></button>
+                            <button type="button" onClick={startRecording} className="w-20 h-20 bg-red-600 rounded-full border-4 border-gray-300 hover:bg-red-500 hover:scale-105 transition-all shadow-[0_0_20px_rgba(220,38,38,0.3)]"></button>
                         )
                     )}
                 </div>
