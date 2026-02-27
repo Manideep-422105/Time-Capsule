@@ -113,9 +113,14 @@ export async function openCapsule(capsuleId: string, senderId: string) {
 
     if (!Item) return { error: "Capsule not found" };
     const now = new Date();
-    const istOffeset=5.5*60*60*1000;
-    const istTime=new Date(now.getTime()+istOffeset);
-    const isUnlocked = istTime >= new Date(Item.unlockDate);
+
+    let unlockTime = new Date(Item.unlockDate);
+    // Backwards compatibility for old capsules saved without timezone (assuming IST based on previous design)
+    if (!Item.unlockDate.includes("Z")) {
+      unlockTime = new Date(unlockTime.getTime() - 5.5 * 60 * 60 * 1000);
+    }
+
+    const isUnlocked = now >= unlockTime;
 
     if (!isUnlocked) return { error: "This capsule is still locked!" };
 
@@ -156,11 +161,9 @@ export async function openCapsule(capsuleId: string, senderId: string) {
 
                     <h1>Echo Notification 🔔</h1>
 
-                    <p>Your capsule <strong>"${
-                      Item.title
-                    }"</strong> was just opened by <strong>${
-                session.user?.email || "Unknown User"
-              }</strong>.</p>
+                    <p>Your capsule <strong>"${Item.title
+                }"</strong> was just opened by <strong>${session.user?.email || "Unknown User"
+                }</strong>.</p>
 
                     <p>The memory has been delivered successfully.</p>
 
@@ -195,23 +198,13 @@ export async function createCapsule(formData: FormData) {
   const file = formData.get("file") as File;
 
   try {
-    // 1. AI SUMMARY GENERATION
-    // We generate a summary now so it can be stored in the DB for the dashboard preview
-    let aiSummary = "A mysterious message from the past...";
-    if (message && message.length > 20) {
-      const aiResult = await processMessage(message);
-      if (aiResult && !("error" in aiResult)) {
-        aiSummary = aiResult.summary || aiSummary;
-      }
-    }
-
-    // 2. S3 UPLOAD
+    // 1 & 2. PARALLEL AI SUMMARY & S3 UPLOAD
     const fileId = uuidv4();
-    const fileExtension = file.name.split(".").pop();
+    const fileExtension = file.name.split(".").pop() || "bin";
     const fileName = `${userId}/${fileId}.${fileExtension}`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    await s3Client.send(
+    const s3Promise = s3Client.send(
       new PutObjectCommand({
         Bucket: process.env.S3_BUCKET_NAME,
         Key: fileName,
@@ -219,6 +212,18 @@ export async function createCapsule(formData: FormData) {
         ContentType: file.type,
       })
     );
+
+    const aiPromise = (async () => {
+      if (message && message.length > 20) {
+        const aiResult = await processMessage(message);
+        if (aiResult && !("error" in aiResult)) {
+          return aiResult.summary || "A mysterious message from the past...";
+        }
+      }
+      return "A mysterious message from the past...";
+    })();
+
+    const [_, aiSummary] = await Promise.all([s3Promise, aiPromise]);
 
     const fileUrl = `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/${fileName}`;
 
@@ -248,9 +253,7 @@ export async function createCapsule(formData: FormData) {
       },
     };
 
-    await dynamoClient.put(putParams);
-
-    // 4. SEND EMAIL
+    // 4. PARALLEL DYNAMODB SAVE & EMAIL SEND
     const emailCommand = new SendEmailCommand({
       Source: "manideep17072004@gmail.com",
       Destination: { ToAddresses: [recipientEmail] },
@@ -266,12 +269,11 @@ export async function createCapsule(formData: FormData) {
                   <p><strong>Title:</strong> ${title}</p>
                   <p><strong>Preview:</strong> <em>"${aiSummary}"</em></p>
                   <p><strong>Unlocks on:</strong> ${new Date(
-                    unlockDate
-                  ).toLocaleString()}</p>
+              unlockDate
+            ).toLocaleString()}</p>
                 </div>
-                <a href="${
-                  process.env.NEXTAUTH_URL
-                }" 
+                <a href="${process.env.NEXTAUTH_URL
+              }" 
                    style="display: inline-block; background: #4F46E5; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
                    View Your Vault
                 </a>
@@ -282,7 +284,10 @@ export async function createCapsule(formData: FormData) {
       },
     });
 
-    await sesClient.send(emailCommand);
+    await Promise.all([
+      dynamoClient.put(putParams),
+      sesClient.send(emailCommand).catch((err) => console.error("Email send failed:", err))
+    ]);
 
     revalidatePath("/");
     return { success: true };

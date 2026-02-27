@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Inbox,
   Send,
@@ -45,24 +45,34 @@ export default function DashboardClient({
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   const currentList = activeTab === "INBOX" ? received : sent;
-  const filteredList = currentList.filter(
-    (c) =>
-      c.title.toLowerCase().includes(search.toLowerCase()) ||
-      (c.message && c.message.toLowerCase().includes(search.toLowerCase())),
-  );
+
+  const filteredList = useMemo(() => {
+    return currentList.filter(
+      (c) =>
+        c.title.toLowerCase().includes(search.toLowerCase()) ||
+        (c.message && c.message.toLowerCase().includes(search.toLowerCase())),
+    );
+  }, [currentList, search]);
 
   const totalCapsules = sent.length + received.length;
-  const unlockedCount = [...sent, ...received].filter(
-    (c) => new Date() >= new Date(c.unlockDate),
-  ).length;
+
+  const unlockedCount = useMemo(() => {
+    return [...sent, ...received].filter(
+      (c) => new Date() >= new Date(c.unlockDate),
+    ).length;
+  }, [sent, received]);
+
   const lockedCount = totalCapsules - unlockedCount;
 
-  const allLocked = [...sent, ...received]
-    .filter((c) => new Date() < new Date(c.unlockDate))
-    .sort(
-      (a, b) =>
-        new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime(),
-    );
+  const allLocked = useMemo(() => {
+    return [...sent, ...received]
+      .filter((c) => new Date() < new Date(c.unlockDate))
+      .sort(
+        (a, b) =>
+          new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime(),
+      );
+  }, [sent, received]);
+
   const nextUnlock = allLocked[0];
 
   return (
@@ -106,11 +116,10 @@ export default function DashboardClient({
               setActiveTab("INBOX");
               setIsMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-              activeTab === "INBOX"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === "INBOX"
                 ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40"
                 : "text-gray-400 hover:bg-white/5 hover:text-white"
-            }`}
+              }`}
           >
             <Inbox className="w-5 h-5" /> Received Memories
             {received.length > 0 && (
@@ -124,11 +133,10 @@ export default function DashboardClient({
               setActiveTab("SENT");
               setIsMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-              activeTab === "SENT"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === "SENT"
                 ? "bg-purple-600 text-white shadow-lg shadow-purple-900/40"
                 : "text-gray-400 hover:bg-white/5 hover:text-white"
-            }`}
+              }`}
           >
             <Send className="w-5 h-5" /> Sent Capsules
             {sent.length > 0 && (

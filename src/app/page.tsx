@@ -4,8 +4,10 @@ import Link from "next/link";
 import { dynamoClient } from "@/lib/dynamodb";
 import { Clock } from "lucide-react";
 import DashboardClient from "@/app/components/DashboardClient";
+import { cache } from "react";
 
-async function getSentCapsules(userId: string) {
+const getSentCapsules = cache(async (userId: string) => {
+  if (!userId) return [];
   try {
     const params = {
       TableName: process.env.AUTH_DYNAMODB_TABLE,
@@ -19,9 +21,10 @@ async function getSentCapsules(userId: string) {
     console.error("Error fetching sent capsules:", error);
     return [];
   }
-}
+});
 
-async function getReceivedCapsules(userEmail: string) {
+const getReceivedCapsules = cache(async (userEmail: string) => {
+  if (!userEmail) return [];
   try {
     const params = {
       TableName: process.env.AUTH_DYNAMODB_TABLE,
@@ -38,9 +41,10 @@ async function getReceivedCapsules(userEmail: string) {
     console.error("Error fetching received capsules:", error);
     return [];
   }
-}
+});
 
-async function getUserPremiumStatus(userId: string) {
+const getUserPremiumStatus = cache(async (userId: string) => {
+  if (!userId) return false;
   try {
     const params = {
       TableName: process.env.AUTH_DYNAMODB_TABLE,
@@ -55,7 +59,7 @@ async function getUserPremiumStatus(userId: string) {
     console.error("Error fetching user status:", error);
     return false;
   }
-}
+});
 
 export default async function Home() {
   const session = await getServerSession(authOptions);

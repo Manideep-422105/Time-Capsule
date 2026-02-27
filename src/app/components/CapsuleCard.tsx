@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Lock, Unlock, Clock, User } from "lucide-react";
 import Countdown from "./Countdown";
 import OpenButton from "./OpenButton";
@@ -8,8 +8,17 @@ import DeleteButton from "./DeleteButton";
 import AiSummarizer from "./AiSummarizer"; // Import the new component
 
 export default function CapsuleCard({ capsule, isReceived }: { capsule: any, isReceived: boolean }) {
-    const initialUnlockState = new Date() >= new Date(capsule.unlockDate);
-    const [isUnlocked, setIsUnlocked] = useState(initialUnlockState);
+    const [isUnlocked, setIsUnlocked] = useState(false);
+
+    useEffect(() => {
+        const now = new Date();
+        let unlockTime = new Date(capsule.unlockDate);
+        if (typeof capsule.unlockDate === "string" && !capsule.unlockDate.includes("Z")) {
+            unlockTime = new Date(unlockTime.getTime() - 5.5 * 60 * 60 * 1000);
+        }
+        setIsUnlocked(now >= unlockTime);
+    }, [capsule.unlockDate]);
+
     const senderId = capsule.pk.split("#")[1];
 
     return (
@@ -19,11 +28,11 @@ export default function CapsuleCard({ capsule, isReceived }: { capsule: any, isR
                     <h3 className="font-bold text-lg truncate pr-2 text-white">{capsule.title}</h3>
                     {isUnlocked ? <User className="w-5 h-5 text-green-400 shrink-0" /> : <Lock className="w-5 h-5 text-gray-500 shrink-0" />}
                 </div>
-                
+
                 <p className="text-xs text-gray-400">
                     {isReceived ? `From: ${capsule.senderName || "Unknown"}` : `To: ${capsule.recipientEmail}`}
                 </p>
-                
+
                 {/* --- AI SUMMARY BUTTON (Receiver Only) --- */}
                 {isUnlocked && capsule.message && isReceived && (
                     <AiSummarizer message={capsule.message} />
@@ -39,14 +48,14 @@ export default function CapsuleCard({ capsule, isReceived }: { capsule: any, isR
                 {/* Spotify Embed */}
                 {isUnlocked && capsule.spotifyTrackId && (
                     <div className="rounded-lg overflow-hidden shadow-lg border border-white/10 mt-2">
-                        <iframe 
-                            style={{ borderRadius: "12px" }} 
-                            src={`https://open.spotify.com/embed/track/${capsule.spotifyTrackId}?utm_source=generator&theme=0`} 
-                            width="100%" 
-                            height="80" 
-                            frameBorder="0" 
-                            allowFullScreen 
-                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                        <iframe
+                            style={{ borderRadius: "12px" }}
+                            src={`https://open.spotify.com/embed/track/${capsule.spotifyTrackId}?utm_source=generator&theme=0`}
+                            width="100%"
+                            height="80"
+                            frameBorder="0"
+                            allowFullScreen
+                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                             loading="lazy"
                         ></iframe>
                     </div>
@@ -56,7 +65,9 @@ export default function CapsuleCard({ capsule, isReceived }: { capsule: any, isR
             <div className="mt-2 pt-4 border-t border-gray-700/50 flex justify-between items-center">
                 <span className="text-xs text-gray-500 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {new Date(capsule.unlockDate).toLocaleDateString()}
+                    {typeof capsule.unlockDate === "string" && !capsule.unlockDate.includes("Z")
+                        ? new Date(new Date(capsule.unlockDate).getTime() - 5.5 * 60 * 60 * 1000).toLocaleDateString()
+                        : new Date(capsule.unlockDate).toLocaleDateString()}
                 </span>
 
                 {isUnlocked ? (
@@ -67,12 +78,19 @@ export default function CapsuleCard({ capsule, isReceived }: { capsule: any, isR
                             <span className="px-3 py-1 bg-gray-800 text-gray-500 text-xs rounded-full border border-gray-700 mb-1">
                                 Locked
                             </span>
-                            <Countdown targetDate={capsule.unlockDate} onFinish={() => setIsUnlocked(true)} />
+                            <Countdown
+                                targetDate={
+                                    typeof capsule.unlockDate === "string" && !capsule.unlockDate.includes("Z")
+                                        ? new Date(new Date(capsule.unlockDate).getTime() - 5.5 * 60 * 60 * 1000).toISOString()
+                                        : capsule.unlockDate
+                                }
+                                onFinish={() => setIsUnlocked(true)}
+                            />
                         </div>
                         {!isReceived && <DeleteButton capsuleId={capsule.id} />}
                     </div>
                 )}
-                
+
                 {!isReceived && isUnlocked && <DeleteButton capsuleId={capsule.id} />}
             </div>
         </div>

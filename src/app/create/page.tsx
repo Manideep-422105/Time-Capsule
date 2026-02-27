@@ -29,15 +29,21 @@ export default function CreateCapsulePage() {
   const [inputType, setInputType] = useState<"UPLOAD" | "CAMERA">("UPLOAD");
   const now = new Date().toISOString().slice(0, 16);
   const [spotifyTrackId, setSpotifyTrackId] = useState<string | null>(null);
-  
+
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [messageText, setMessageText] = useState(""); 
+  const [messageText, setMessageText] = useState("");
   const [originalText, setOriginalText] = useState("");
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     const formData = new FormData(event.currentTarget);
+
+    // Standardize the local datetime input into a reliable global UTC timestamp 
+    const rawDate = formData.get("unlockDate") as string;
+    if (rawDate) {
+      formData.set("unlockDate", new Date(rawDate).toISOString());
+    }
 
     if (capturedFile) {
       formData.set("file", capturedFile);
@@ -135,7 +141,7 @@ export default function CreateCapsulePage() {
           <div className="space-y-2 flex-1 flex flex-col">
             <div className="flex justify-between items-center mb-1">
               <label className="text-sm font-bold text-gray-300">Message</label>
-              
+
               <div className="flex gap-2">
                 {originalText && (
                   <button
@@ -166,13 +172,13 @@ export default function CreateCapsulePage() {
             </div>
 
             {/* INTEGRATED AI SUMMARIZER & REFINER */}
-            <AiSummarizer 
-              message={messageText} 
+            <AiSummarizer
+              message={messageText}
               onRefine={(refined) => {
                 setOriginalText(messageText);
                 setMessageText(refined);
                 toast.success("Refined text applied!");
-              }} 
+              }}
             />
 
             <textarea
