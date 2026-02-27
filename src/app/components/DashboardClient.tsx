@@ -21,7 +21,6 @@ import CapsuleCard from "./CapsuleCard";
 import Countdown from "./Countdown";
 import UpgradeModal from "./UpgradeModal";
 
-// 1. UPDATE INTERFACE
 type DashboardProps = {
   user: {
     name?: string | null;
@@ -30,14 +29,14 @@ type DashboardProps = {
   };
   sent: any[];
   received: any[];
-  isPremium: boolean; // <--- Added isPremium type definition
+  isPremium: boolean;
 };
 
 export default function DashboardClient({
   user,
   sent,
   received,
-  isPremium, // <--- Added destructuring here
+  isPremium,
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<"INBOX" | "SENT">("INBOX");
   const [search, setSearch] = useState("");
@@ -49,12 +48,12 @@ export default function DashboardClient({
   const filteredList = currentList.filter(
     (c) =>
       c.title.toLowerCase().includes(search.toLowerCase()) ||
-      (c.message && c.message.toLowerCase().includes(search.toLowerCase()))
+      (c.message && c.message.toLowerCase().includes(search.toLowerCase())),
   );
 
   const totalCapsules = sent.length + received.length;
   const unlockedCount = [...sent, ...received].filter(
-    (c) => new Date() >= new Date(c.unlockDate)
+    (c) => new Date() >= new Date(c.unlockDate),
   ).length;
   const lockedCount = totalCapsules - unlockedCount;
 
@@ -62,7 +61,7 @@ export default function DashboardClient({
     .filter((c) => new Date() < new Date(c.unlockDate))
     .sort(
       (a, b) =>
-        new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime()
+        new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime(),
     );
   const nextUnlock = allLocked[0];
 

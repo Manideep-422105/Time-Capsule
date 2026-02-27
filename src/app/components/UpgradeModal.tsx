@@ -58,7 +58,7 @@ export default function UpgradeModal({ onClose }: { onClose: () => void }) {
           {loading ? (
             <Loader2 className="animate-spin" />
           ) : (
-            "Subscribe for ₹499/mo"
+            "Subscribe for ₹199/mo"
           )}
         </button>
       </div>

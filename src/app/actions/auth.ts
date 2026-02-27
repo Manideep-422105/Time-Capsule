@@ -21,19 +21,16 @@ export async function registerUser(formData: FormData) {
       ":sk": `USER#${email}`,
     },
   };
-  
+
   const { Items } = await dynamoClient.query(checkParams);
   if (Items && Items.length > 0) {
     return { error: "User already exists" };
   }
 
-  // 2. Hash password
   const hashedPassword = await bcrypt.hash(password, 10);
   const userId = uuidv4();
   const now = new Date().toISOString();
 
-  // 3. Insert User conforming to Adapter Schema
-  // pk/sk = USER#<uuid>, GSI1PK/SK = USER#<email>
   const putParams = {
     TableName: process.env.AUTH_DYNAMODB_TABLE,
     Item: {
@@ -45,7 +42,7 @@ export async function registerUser(formData: FormData) {
       id: userId,
       name: name,
       email: email,
-      password: hashedPassword, // Custom field for credentials login
+      password: hashedPassword,
       createdAt: now,
       updatedAt: now,
     },

@@ -4,30 +4,30 @@ import Stripe from "stripe";
 import { dynamoClient } from "@/lib/dynamodb";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
-
-// Initialize SES (Email)
-const sesClient = new SESClient({
-  region: process.env.AUTH_DYNAMODB_REGION,
-  credentials: {
-    accessKeyId: process.env.AUTH_DYNAMODB_ID!,
-    secretAccessKey: process.env.AUTH_DYNAMODB_SECRET!,
-  },
-});
-
 export async function POST(req: Request) {
   const body = await req.text();
-  const signature = (await headers()).get("stripe-signature") as string;
+  const signature = req.headers.get("stripe-signature");
+
+  if (!signature) {
+    return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 });
+  }
+
+  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: "Stripe configuration missing" }, { status: 500 });
+  }
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   let event: Stripe.Event;
 
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err: any) {
+    console.error(`Webhook Error: ${err.message}`);
     return NextResponse.json(
       { error: `Webhook Error: ${err.message}` },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -42,7 +42,6 @@ export async function POST(req: Request) {
     if (userId) {
       console.log(`✅ Upgrade User ${userId} to Premium`);
 
-      // 1. UPDATE DYNAMODB: Set isPremium = true
       const updateParams = {
         TableName: process.env.AUTH_DYNAMODB_TABLE,
         Key: {
@@ -58,9 +57,16 @@ export async function POST(req: Request) {
 
       await dynamoClient.update(updateParams);
 
-      // 2. SEND WELCOME EMAIL (New Feature)
-      if (userEmail) {
+      if (userEmail && process.env.AUTH_DYNAMODB_REGION && process.env.AUTH_DYNAMODB_ID && process.env.AUTH_DYNAMODB_SECRET) {
         try {
+          const sesClient = new SESClient({
+            region: process.env.AUTH_DYNAMODB_REGION,
+            credentials: {
+              accessKeyId: process.env.AUTH_DYNAMODB_ID,
+              secretAccessKey: process.env.AUTH_DYNAMODB_SECRET,
+            },
+          });
+
           const emailCommand = new SendEmailCommand({
             Source: "manideep17072004@gmail.com",
             Destination: { ToAddresses: [userEmail] },
@@ -81,7 +87,7 @@ export async function POST(req: Request) {
                         </ul>
                         <p>Go create your first 4K memory now!</p>
                         <br/>
-                        <a href="${process.env.NEXTAUTH_URL}" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Dashboard</a>
+                        <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Dashboard</a>
                     </div>
                   `,
                 },
@@ -93,7 +99,6 @@ export async function POST(req: Request) {
           console.log(`📧 Sent Pro welcome email to ${userEmail}`);
         } catch (emailError) {
           console.error("Failed to send Pro email:", emailError);
-          // We don't fail the request here, because the payment succeeded.
         }
       }
     }

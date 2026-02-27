@@ -3,9 +3,8 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import Link from "next/link";
 import { dynamoClient } from "@/lib/dynamodb";
 import { Clock } from "lucide-react";
-import DashboardClient from "@/app/components/DashboardClient"; // Import the Client UI
+import DashboardClient from "@/app/components/DashboardClient";
 
-// --- DATA FETCHING (Keep this on server) ---
 async function getSentCapsules(userId: string) {
   try {
     const params = {
@@ -60,12 +59,9 @@ async function getUserPremiumStatus(userId: string) {
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
-
-  // 1. LANDING PAGE (Not Logged In)
   if (!session) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-black overflow-hidden relative">
-        {/* Background glow effect */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[128px]"></div>
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[128px]"></div>
@@ -105,23 +101,20 @@ export default async function Home() {
     );
   }
 
-  // 2. LOGGED IN? FETCH DATA
   const userId = (session.user as any).id;
-  
-  // Parallel Fetching for Speed
+
   const [sentCapsules, receivedCapsules, isPremium] = await Promise.all([
     getSentCapsules(userId),
     getReceivedCapsules(session.user?.email!),
     getUserPremiumStatus(userId),
   ]);
 
-  // 3. RENDER DASHBOARD CLIENT
   return (
     <DashboardClient
       user={session.user!}
       sent={sentCapsules}
       received={receivedCapsules}
-      isPremium={isPremium} // Pass the premium status to the UI
+      isPremium={isPremium}
     />
   );
 }

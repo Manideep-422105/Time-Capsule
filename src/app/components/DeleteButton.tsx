@@ -9,10 +9,7 @@ export default function DeleteButton({ capsuleId }: { capsuleId: string }) {
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    // We can use a toast to confirm instead of window.confirm if we wanted,
-    // but window.confirm is safer.
     if (!confirm("Are you sure?")) return;
-
     setLoading(true);
     const toastId = toast.loading("Deleting memory...");
 

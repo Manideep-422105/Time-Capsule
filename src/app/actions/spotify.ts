@@ -5,9 +5,6 @@ const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 export async function searchSpotify(query: string) {
   if (!query) return [];
-
-  // 1. Get Access Token (Client Credentials Flow)
-  // We do this every time for simplicity (in prod, you'd cache this token)
   const authResponse = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
     headers: {
@@ -37,7 +34,7 @@ export async function searchSpotify(query: string) {
     id: track.id,
     name: track.name,
     artist: track.artists[0].name,
-    image: track.album.images[2]?.url || "", // Small thumbnail
+    image: track.album.images[2]?.url || "",
     preview: track.preview_url,
   }));
 }

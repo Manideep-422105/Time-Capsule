@@ -6,7 +6,9 @@ import { dynamoClient } from "@/lib/dynamodb";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
-  adapter: DynamoDBAdapter(dynamoClient, { tableName: process.env.AUTH_DYNAMODB_TABLE }),
+  adapter: DynamoDBAdapter(dynamoClient, {
+    tableName: process.env.AUTH_DYNAMODB_TABLE,
+  }),
   session: {
     strategy: "jwt",
     maxAge: 1 * 60 * 60,
@@ -39,8 +41,16 @@ export const authOptions: NextAuthOptions = {
         const { Items } = await dynamoClient.query(params);
         const user = Items?.[0];
 
-        if (user && user.password && bcrypt.compareSync(credentials.password, user.password)) {
-          return { id: user.pk.split("#")[1], name: user.name, email: user.email };
+        if (
+          user &&
+          user.password &&
+          bcrypt.compareSync(credentials.password, user.password)
+        ) {
+          return {
+            id: user.pk.split("#")[1],
+            name: user.name,
+            email: user.email,
+          };
         }
         return null;
       },
@@ -55,8 +65,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: '/signin',
-  }
+    signIn: "/signin",
+  },
 };
 
 const handler = NextAuth(authOptions);
